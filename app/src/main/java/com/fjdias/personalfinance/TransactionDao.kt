@@ -20,6 +20,9 @@ interface TransactionDao {
     @Update
     suspend fun update(transaction: Transaction)
 
+    @Delete
+    suspend fun delete(transaction: Transaction)
+
     @Query("UPDATE transactions SET categoryName = :newName WHERE categoryName = :oldName")
     suspend fun updateCategoryName(oldName: String, newName: String)
 }

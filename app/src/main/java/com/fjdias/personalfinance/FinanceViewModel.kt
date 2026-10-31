@@ -85,6 +85,12 @@ class FinanceViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
+    fun deleteTransaction(transaction: Transaction) {
+        viewModelScope.launch(Dispatchers.IO) {
+            transactionDao.delete(transaction)
+        }
+    }
+
     fun addManualTransaction(title: String, amount: Double, categoryName: String, date: LocalDate) {
         viewModelScope.launch(Dispatchers.IO) {
             // Garante que a categoria existe ao adicionar manualmente

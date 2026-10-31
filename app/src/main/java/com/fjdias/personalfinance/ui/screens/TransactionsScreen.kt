@@ -116,6 +116,10 @@ fun TransactionItem(transaction: Transaction, categories: List<Category>, viewMo
             onConfirm = { t, a, c, d ->
                 viewModel.updateTransaction(transaction.copy(title = t, amount = a, categoryName = c, date = d))
                 showEditDialog = false
+            },
+            onDelete = {
+                viewModel.deleteTransaction(transaction)
+                showEditDialog = false
             }
         )
     }
