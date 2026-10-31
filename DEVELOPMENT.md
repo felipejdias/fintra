@@ -18,10 +18,15 @@ Este documento registra o estado atual do projeto e o roteiro de funcionalidades
 - Implementa inserção e edição manual de transações com suporte a Coroutines.
 - Coordena a atualização global de categorias para manter a consistência dos dados.
 
-### 4. Interface do Usuário (`MainActivity.kt`)
-- **Navegação**: 4 abas (Transações, Resumo, Gastos, Categorias).
+### 4. Interface do Usuário (`MainActivity.kt` + pacote `ui/`)
+- **Navegação**: 4 abas (Transações, Resumo, Gastos, Categorias) em `NavigationBar` com ícones semânticos.
+- **Tema**: Paleta verde-esmeralda própria (light/dark) em `ui/theme`, com cores semânticas (`FinanceColors`) para renda/despesa e paleta por categoria.
+- **Filtros**: `FilterChip`s em `LazyRow` (ano, mês, categoria) — substituíram `ScrollableTabRow`.
+- **Transações**: Lista agrupada por data (Hoje/Ontem/data), cards com ícone e cor por categoria, valores com sinal (+/-) coloridos.
+- **Resumo**: Card hero de saldo com gradiente, cards de Entradas/Saídas e barra de comprometimento da renda.
+- **Gastos**: Donut chart desenhado em `Canvas` + legenda com percentuais e barras de progresso.
 - **Gestão de Transações**: 
-    - Botão "+" (FAB) para inserção manual.
+    - FAB estendido ("Nova") para inserção manual.
     - Clique em qualquer transação abre o `TransactionDialog` para edição completa (Título, Valor, Data e Categoria).
 - **Lógica de Resumo Estrita**: 
     - Considera **Entrada** apenas transações na categoria "Renda".
@@ -30,14 +35,15 @@ Este documento registra o estado atual do projeto e o roteiro de funcionalidades
     - Aba Transações: Busca + Mês + Categoria.
     - Abas Analíticas: Filtro apenas por Mês (Visão Geral).
 - **Componentes Customizados**: Uso de `DatePickerDialog` estabilizado para seleção de datas sem interrupções.
+- **Organização**: Composables separados em `ui/components` (filtros, dialog, empty state) e `ui/screens` (uma tela por arquivo).
 
 ---
 
 ## Próximas Funcionalidades (Backlog)
 
 ### Fase 1: Visualização
-- [ ] **Gráfico de Pizza**: Implementar representação visual na aba de Gastos.
-- [ ] **Exportação**: Opção para exportar os dados filtrados para CSV.
+- [x] **Gráfico de Pizza**: Implementado como donut chart em `Canvas` na aba de Gastos (`BreakdownScreen.kt`).
+- [x] **Exportação**: Opção para exportar os dados filtrados para CSV (botão na TopBar, diálogo `Exportar Backup`).
 
 ### Fase 2: Controle
 - [ ] **Metas**: Definir limites de gastos por categoria.
