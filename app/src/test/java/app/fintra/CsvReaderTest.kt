@@ -61,4 +61,80 @@ class CsvReaderTest {
         assertEquals(expectedHeader, lines[0].trim())
         assertEquals(expectedRow, lines[1].trim())
     }
+
+    @Test
+    fun `readTransactions normalizes renda category case`() {
+        val csvData = """
+            date,title,amount,category
+            2023-10-01,Salário,5000.00,renda
+        """.trimIndent()
+
+        val transactions = csvReader.readTransactions(ByteArrayInputStream(csvData.toByteArray()))
+
+        assertEquals("Renda", transactions[0].categoryName)
+    }
+
+    @Test
+    fun `readTransactions parses quoted titles containing commas`() {
+        val csvData = """
+            date,title,amount,category
+            2023-10-01,"Mercado, tal e tal",150.00,Alimentação
+        """.trimIndent()
+
+        val transactions = csvReader.readTransactions(ByteArrayInputStream(csvData.toByteArray()))
+
+        assertEquals(1, transactions.size)
+        assertEquals("Mercado, tal e tal", transactions[0].title)
+        assertEquals(150.0, transactions[0].amount, 0.001)
+    }
+
+    @Test
+    fun `readTransactions skips malformed lines instead of failing`() {
+        val csvData = """
+            date,title,amount,category
+            2023-10-01,Válida,10.00,Lazer
+            linha-quebrada-sem-colunas
+            2023-10-02,Inválida,abc,Outros
+            2023-10-03,Válida 2,20.00,Saúde
+        """.trimIndent()
+
+        val transactions = csvReader.readTransactions(ByteArrayInputStream(csvData.toByteArray()))
+
+        assertEquals(2, transactions.size)
+        assertEquals("Válida", transactions[0].title)
+        assertEquals("Válida 2", transactions[1].title)
+    }
+
+    @Test
+    fun `readTransactions uses Outros for blank category column`() {
+        val csvData = """
+            date,title,amount,category
+            2023-10-01,Padaria,8.50,
+        """.trimIndent()
+
+        val transactions = csvReader.readTransactions(ByteArrayInputStream(csvData.toByteArray()))
+
+        assertEquals("Outros", transactions[0].categoryName)
+    }
+
+    @Test
+    fun `export escapes titles containing commas so round trip works`() {
+        val transactions = listOf(
+            Transaction(
+                date = LocalDate.of(2023, 10, 1),
+                title = "Padaria, do bairro",
+                amount = 25.5,
+                categoryName = "Alimentação"
+            )
+        )
+        val outputStream = java.io.ByteArrayOutputStream()
+        csvReader.exportTransactions(outputStream, transactions)
+
+        val reparsed = csvReader.readTransactions(ByteArrayInputStream(outputStream.toByteArray()))
+
+        assertEquals(1, reparsed.size)
+        assertEquals("Padaria, do bairro", reparsed[0].title)
+        assertEquals(25.5, reparsed[0].amount, 0.001)
+        assertEquals("Alimentação", reparsed[0].categoryName)
+    }
 }

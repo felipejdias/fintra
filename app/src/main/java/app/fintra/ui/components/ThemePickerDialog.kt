@@ -20,12 +20,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import app.fintra.ui.theme.AppTheme
+import app.fintra.ui.theme.CustomThemeColors
 
 @Composable
 fun ThemePickerDialog(
     currentTheme: AppTheme,
+    customColors: CustomThemeColors = CustomThemeColors(),
     onThemeSelected: (AppTheme) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -48,7 +51,10 @@ fun ThemePickerDialog(
                             onClick = { onThemeSelected(theme) }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy((-4).dp)) {
-                            theme.previewColors.forEach { color ->
+                            val preview = if (theme == AppTheme.CUSTOM)
+                                listOf(Color(customColors.primary), Color(customColors.secondary), Color(customColors.tertiary))
+                            else theme.previewColors
+                            preview.forEach { color ->
                                 Box(
                                     modifier = Modifier
                                         .size(20.dp)

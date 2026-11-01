@@ -54,6 +54,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.fintra.ui.components.CategoryFilter
+import app.fintra.ui.components.CustomThemeDialog
 import app.fintra.ui.components.MonthFilter
 import app.fintra.ui.components.SearchBar
 import app.fintra.ui.components.ThemePickerDialog
@@ -64,6 +65,7 @@ import app.fintra.ui.screens.CategoriesScreen
 import app.fintra.ui.screens.SummaryScreen
 import app.fintra.ui.screens.TransactionsListScreen
 import app.fintra.ui.theme.AppTheme
+import app.fintra.ui.theme.CustomThemeColors
 import app.fintra.ui.theme.PersonalFinanceTheme
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -92,9 +94,13 @@ class MainActivity : ComponentActivity() {
             val context = LocalContext.current
             val prefs = remember { context.getSharedPreferences("fintra_prefs", Context.MODE_PRIVATE) }
             var appTheme by remember { mutableStateOf(AppTheme.fromKey(prefs.getString("theme", null))) }
+            var customColors by remember {
+                mutableStateOf(CustomThemeColors.deserialize(prefs.getString("custom_theme", null)) ?: CustomThemeColors())
+            }
             var showThemeDialog by remember { mutableStateOf(false) }
+            var showCustomThemeDialog by remember { mutableStateOf(false) }
 
-            PersonalFinanceTheme(appTheme = appTheme) {
+            PersonalFinanceTheme(appTheme = appTheme, customColors = customColors) {
                 val viewModel: FinanceViewModel = viewModel()
                 val allTransactions by viewModel.allTransactions.collectAsState(initial = emptyList())
                 val allCategories by viewModel.allCategories.collectAsState(initial = emptyList())
@@ -123,17 +129,11 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val transactionsForList = allTransactions.filter {
-                    val matchesSearch = it.title.contains(searchQuery, ignoreCase = true)
-                    val matchesYear = selectedYear == null || it.date.year == selectedYear
-                    val matchesMonth = selectedMonth == null || it.date.monthValue == selectedMonth
-                    val matchesCategory = selectedCategoryName == null || it.categoryName == selectedCategoryName
-                    matchesSearch && matchesYear && matchesMonth && matchesCategory
+                    FinanceLogic.matchesFilters(it, searchQuery, selectedYear, selectedMonth, selectedCategoryName)
                 }
 
                 val transactionsForAnalytics = allTransactions.filter {
-                    val matchesYear = selectedYear == null || it.date.year == selectedYear
-                    val matchesMonth = selectedMonth == null || it.date.monthValue == selectedMonth
-                    matchesYear && matchesMonth
+                    FinanceLogic.matchesAnalyticsPeriod(it, selectedYear, selectedMonth)
                 }
 
                 if (showDeleteDialog) {
@@ -185,11 +185,33 @@ class MainActivity : ComponentActivity() {
                 if (showThemeDialog) {
                     ThemePickerDialog(
                         currentTheme = appTheme,
+                        customColors = customColors,
                         onThemeSelected = { theme ->
-                            appTheme = theme
-                            prefs.edit().putString("theme", theme.name).apply()
+                            if (theme == AppTheme.CUSTOM) {
+                                showThemeDialog = false
+                                showCustomThemeDialog = true
+                            } else {
+                                appTheme = theme
+                                prefs.edit().putString("theme", theme.name).apply()
+                            }
                         },
                         onDismiss = { showThemeDialog = false }
+                    )
+                }
+
+                if (showCustomThemeDialog) {
+                    CustomThemeDialog(
+                        initial = customColors,
+                        onSave = { colors ->
+                            customColors = colors
+                            appTheme = AppTheme.CUSTOM
+                            prefs.edit()
+                                .putString("custom_theme", colors.serialize())
+                                .putString("theme", AppTheme.CUSTOM.name)
+                                .apply()
+                            showCustomThemeDialog = false
+                        },
+                        onDismiss = { showCustomThemeDialog = false }
                     )
                 }
 

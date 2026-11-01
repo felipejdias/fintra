@@ -5,9 +5,12 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.core.graphics.ColorUtils
+import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 val LocalAppTheme = compositionLocalOf { AppTheme.ESMERALDA }
+val LocalCustomColors = compositionLocalOf { CustomThemeColors() }
 
 enum class AppTheme(
     val label: String,
@@ -20,7 +23,8 @@ enum class AppTheme(
     OCEANO("Oceano", 0xFF0061A4.toInt(), 0xFF4F6178.toInt(), 0xFF1E6A87.toInt()),
     AMBAR("Âmbar", 0xFF7F5800.toInt(), 0xFF6E5D40.toInt(), 0xFF566632.toInt()),
     POR_DO_SOL("Pôr do Sol", 0xFF9A4525.toInt(), 0xFF775654.toInt(), 0xFF705D00.toInt()),
-    AURORA("Aurora", 0xFF00696B.toInt(), 0xFF7A5AAA.toInt(), 0xFFA04073.toInt());
+    AURORA("Aurora", 0xFF00696B.toInt(), 0xFF7A5AAA.toInt(), 0xFFA04073.toInt()),
+    CUSTOM("Personalizado", 0xFF546E7A.toInt(), 0xFF78909C.toInt(), 0xFF8D6E63.toInt());
 
     val previewColors = listOf(Color(primarySeed), Color(secondarySeed), Color(tertiarySeed))
 
@@ -67,19 +71,86 @@ enum class AppTheme(
     )
 
     // Aproxima o tonal do Material: mantém hue/sat da seed e varia só a luminosidade.
-    private fun tone(seed: Int, t: Int): Int = shift(seed, null, t)
-    private fun neutral(t: Int): Int = shift(primarySeed, 0.06f, t)
-    private fun neutralVariant(t: Int): Int = shift(primarySeed, 0.14f, t)
+    private fun tone(seed: Int, t: Int): Int = hslShift(seed, null, t)
 
-    private fun shift(seed: Int, sat: Float?, t: Int): Int {
-        val hsl = FloatArray(3)
-        ColorUtils.colorToHSL(seed, hsl)
-        if (sat != null) hsl[1] = sat
-        hsl[2] = t.coerceIn(0, 100) / 100f
-        return ColorUtils.HSLToColor(hsl)
-    }
+    // Neutros = cinza no tom t com a seed misturada por blend direto.
+    // Blend garante tinta visível — HSL com sat baixa colapsa pra ~branco
+    // em luminosidade alta, que foi o bug do "fundo que não muda".
+    private fun neutral(t: Int): Int = blendArgb(grayTone(t), primarySeed, if (t < 50) 0.20f else 0.14f)
+    private fun neutralVariant(t: Int): Int = blendArgb(grayTone(t), primarySeed, if (t < 50) 0.28f else 0.22f)
+
+    // Int crua pra teste de unidade (sem depender de classes Compose no JVM)
+    fun surfaceColorInt(dark: Boolean): Int = if (dark) neutral(6) else neutral(98)
 
     companion object {
         fun fromKey(key: String?): AppTheme = entries.find { it.name == key } ?: ESMERALDA
     }
+}
+
+// ----- Matemática de cor compartilhada (JVM puro, testável em unit test) -----
+
+internal fun grayTone(t: Int): Int {
+    val v = (t.coerceIn(0, 100) * 2.55f).roundToInt().coerceIn(0, 255)
+    return -0x1000000 or (v shl 16) or (v shl 8) or v
+}
+
+internal fun blendArgb(base: Int, tint: Int, amount: Float): Int {
+    val a = amount.coerceIn(0f, 1f)
+    val r = ((base shr 16 and 0xFF) * (1f - a) + (tint shr 16 and 0xFF) * a).roundToInt()
+    val g = ((base shr 8 and 0xFF) * (1f - a) + (tint shr 8 and 0xFF) * a).roundToInt()
+    val b = ((base and 0xFF) * (1f - a) + (tint and 0xFF) * a).roundToInt()
+    return -0x1000000 or (r shl 16) or (g shl 8) or b
+}
+
+// Luminância relativa W3C — decide texto claro ou escuro sobre uma cor.
+internal fun relativeLuminance(c: Int): Float {
+    fun f(v: Int): Float {
+        val s = v / 255f
+        return if (s <= 0.03928f) s / 12.92f else ((s + 0.055f) / 1.055f).pow(2.4f)
+    }
+    return 0.2126f * f(c shr 16 and 0xFF) + 0.7152f * f(c shr 8 and 0xFF) + 0.0722f * f(c and 0xFF)
+}
+
+internal fun bestOnColor(bg: Int): Int =
+    if (relativeLuminance(bg) > 0.30f) 0xFF14181A.toInt() else 0xFFF7F7F7.toInt()
+
+// HSL puro (sem android.graphics) para rodar em testes JVM locais.
+internal fun hslShift(seed: Int, sat: Float?, t: Int): Int {
+    val r = (seed shr 16 and 0xFF) / 255f
+    val g = (seed shr 8 and 0xFF) / 255f
+    val b = (seed and 0xFF) / 255f
+
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    val d = max - min
+    var h = 0f
+    var s = 0f
+    if (d != 0f) {
+        val l = (max + min) / 2f
+        s = if (l > 0.5f) d / (2f - max - min) else d / (max + min)
+        h = when (max) {
+            r -> (g - b) / d + (if (g < b) 6f else 0f)
+            g -> (b - r) / d + 2f
+            else -> (r - g) / d + 4f
+        } * 60f
+    }
+    s = sat ?: s
+    val l = t.coerceIn(0, 100) / 100f
+
+    val c = (1f - abs(2f * l - 1f)) * s
+    val hp = h / 60f
+    val x = c * (1f - abs(hp % 2f - 1f))
+    val (r1, g1, b1) = when {
+        hp < 1f -> Triple(c, x, 0f)
+        hp < 2f -> Triple(x, c, 0f)
+        hp < 3f -> Triple(0f, c, x)
+        hp < 4f -> Triple(0f, x, c)
+        hp < 5f -> Triple(x, 0f, c)
+        else -> Triple(c, 0f, x)
+    }
+    val m = l - c / 2f
+    val ri = ((r1 + m) * 255f).roundToInt().coerceIn(0, 255)
+    val gi = ((g1 + m) * 255f).roundToInt().coerceIn(0, 255)
+    val bi = ((b1 + m) * 255f).roundToInt().coerceIn(0, 255)
+    return -0x1000000 or (ri shl 16) or (gi shl 8) or bi
 }

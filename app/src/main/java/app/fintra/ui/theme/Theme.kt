@@ -9,14 +9,23 @@ import androidx.compose.runtime.remember
 @Composable
 fun PersonalFinanceTheme(
     appTheme: AppTheme = AppTheme.ESMERALDA,
+    customColors: CustomThemeColors = CustomThemeColors(),
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = remember(appTheme, darkTheme) {
-        if (darkTheme) appTheme.darkScheme() else appTheme.lightScheme()
+    val colorScheme = remember(appTheme, customColors, darkTheme) {
+        when {
+            // CUSTOM ignora claro/escuro do SO — as cores escolhidas valem sempre.
+            appTheme == AppTheme.CUSTOM -> customScheme(customColors)
+            darkTheme -> appTheme.darkScheme()
+            else -> appTheme.lightScheme()
+        }
     }
 
-    CompositionLocalProvider(LocalAppTheme provides appTheme) {
+    CompositionLocalProvider(
+        LocalAppTheme provides appTheme,
+        LocalCustomColors provides customColors
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = Typography,

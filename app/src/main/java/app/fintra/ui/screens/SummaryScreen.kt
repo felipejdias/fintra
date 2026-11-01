@@ -33,18 +33,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.fintra.FinanceLogic
 import app.fintra.Transaction
 import app.fintra.formatCurrency
 import app.fintra.ui.components.EmptyState
 import app.fintra.ui.theme.FinanceColors
+import app.fintra.ui.theme.AppTheme
 import app.fintra.ui.theme.LocalAppTheme
-import kotlin.math.abs
+import app.fintra.ui.theme.LocalCustomColors
 
 @Composable
 fun SummaryScreen(transactions: List<Transaction>) {
-    val income = transactions.filter { it.categoryName == "Renda" }.sumOf { abs(it.amount) }
-    val expenses = transactions.filter { it.categoryName != "Renda" }.sumOf { abs(it.amount) }
-    val balance = income - expenses
+    val (income, expenses, balance, _) = FinanceLogic.summarize(transactions)
 
     if (transactions.isEmpty()) {
         EmptyState(
@@ -97,7 +97,10 @@ private fun BalanceHeroCard(balance: Double) {
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
-                    colors = LocalAppTheme.current.heroGradient
+                    colors = if (LocalAppTheme.current == AppTheme.CUSTOM)
+                        LocalCustomColors.current.heroGradient()
+                    else
+                        LocalAppTheme.current.heroGradient
                 )
             )
             .padding(24.dp)
