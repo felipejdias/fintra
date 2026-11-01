@@ -1,5 +1,6 @@
 package com.fjdias.personalfinance
 
+import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.SaveAlt
@@ -54,12 +56,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.fjdias.personalfinance.ui.components.CategoryFilter
 import com.fjdias.personalfinance.ui.components.MonthFilter
 import com.fjdias.personalfinance.ui.components.SearchBar
+import com.fjdias.personalfinance.ui.components.ThemePickerDialog
 import com.fjdias.personalfinance.ui.components.TransactionDialog
 import com.fjdias.personalfinance.ui.components.YearFilter
 import com.fjdias.personalfinance.ui.screens.BreakdownScreen
 import com.fjdias.personalfinance.ui.screens.CategoriesScreen
 import com.fjdias.personalfinance.ui.screens.SummaryScreen
 import com.fjdias.personalfinance.ui.screens.TransactionsListScreen
+import com.fjdias.personalfinance.ui.theme.AppTheme
 import com.fjdias.personalfinance.ui.theme.PersonalFinanceTheme
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -85,11 +89,15 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            PersonalFinanceTheme {
+            val context = LocalContext.current
+            val prefs = remember { context.getSharedPreferences("fintra_prefs", Context.MODE_PRIVATE) }
+            var appTheme by remember { mutableStateOf(AppTheme.fromKey(prefs.getString("theme", null))) }
+            var showThemeDialog by remember { mutableStateOf(false) }
+
+            PersonalFinanceTheme(appTheme = appTheme) {
                 val viewModel: FinanceViewModel = viewModel()
                 val allTransactions by viewModel.allTransactions.collectAsState(initial = emptyList())
                 val allCategories by viewModel.allCategories.collectAsState(initial = emptyList())
-                val context = LocalContext.current
 
                 var searchQuery by remember { mutableStateOf("") }
                 var selectedYear by remember { mutableStateOf<Int?>(null) }
@@ -174,6 +182,17 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
+                if (showThemeDialog) {
+                    ThemePickerDialog(
+                        currentTheme = appTheme,
+                        onThemeSelected = { theme ->
+                            appTheme = theme
+                            prefs.edit().putString("theme", theme.name).apply()
+                        },
+                        onDismiss = { showThemeDialog = false }
+                    )
+                }
+
                 if (showAddTransactionDialog) {
                     TransactionDialog(
                         title = "Nova Transação",
@@ -199,10 +218,13 @@ class MainActivity : ComponentActivity() {
                                             tint = MaterialTheme.colorScheme.primary
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Personal Finance", fontWeight = FontWeight.Bold)
+                                        Text("Fintra", fontWeight = FontWeight.Bold)
                                     }
                                 },
                                 actions = {
+                                    IconButton(onClick = { showThemeDialog = true }, modifier = Modifier.testTag("ThemePickerButton")) {
+                                        Icon(Icons.Default.Palette, contentDescription = "Escolher tema")
+                                    }
                                     IconButton(onClick = { showExportDialog = true }, modifier = Modifier.testTag("ExportBackupButton")) {
                                         Icon(Icons.Default.SaveAlt, contentDescription = "Exportar Backup")
                                     }

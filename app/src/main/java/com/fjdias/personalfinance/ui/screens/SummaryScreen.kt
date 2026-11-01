@@ -37,9 +37,7 @@ import com.fjdias.personalfinance.Transaction
 import com.fjdias.personalfinance.formatCurrency
 import com.fjdias.personalfinance.ui.components.EmptyState
 import com.fjdias.personalfinance.ui.theme.FinanceColors
-import com.fjdias.personalfinance.ui.theme.Green20
-import com.fjdias.personalfinance.ui.theme.Green30
-import com.fjdias.personalfinance.ui.theme.Green40
+import com.fjdias.personalfinance.ui.theme.LocalAppTheme
 import kotlin.math.abs
 
 @Composable
@@ -99,7 +97,7 @@ private fun BalanceHeroCard(balance: Double) {
             .clip(RoundedCornerShape(24.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(Green40, Green30, Green20)
+                    colors = LocalAppTheme.current.heroGradient
                 )
             )
             .padding(24.dp)
