@@ -17,7 +17,7 @@ fun signingSecret(name: String): String? =
     System.getenv(name) ?: keystoreProps.getProperty(name)
 
 android {
-    namespace = "com.fjdias.personalfinance"
+    namespace = "app.fintra"
     compileSdk = 35
 
     signingConfigs {
@@ -30,7 +30,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.fjdias.personalfinance"
+        applicationId = "app.fintra"
         minSdk = 26
         targetSdk = 35
         versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
