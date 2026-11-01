@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,16 +8,33 @@ plugins {
     id("jacoco")
 }
 
+val keystoreProps = Properties().apply {
+    val propsFile = rootProject.file("keystore.properties")
+    if (propsFile.exists()) propsFile.inputStream().use(::load)
+}
+
+fun signingSecret(name: String): String? =
+    System.getenv(name) ?: keystoreProps.getProperty(name)
+
 android {
     namespace = "com.fjdias.personalfinance"
     compileSdk = 35
+
+    signingConfigs {
+        create("release") {
+            storeFile = signingSecret("RELEASE_STORE_FILE")?.let { rootProject.file(it) }
+            storePassword = signingSecret("RELEASE_STORE_PASSWORD")
+            keyAlias = signingSecret("RELEASE_KEY_ALIAS")
+            keyPassword = signingSecret("RELEASE_KEY_PASSWORD")
+        }
+    }
 
     defaultConfig {
         applicationId = "com.fjdias.personalfinance"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("VERSION_NAME") ?: "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -26,6 +45,10 @@ android {
             enableAndroidTestCoverage = true
         }
         release {
+            signingConfig = if (signingSecret("RELEASE_STORE_FILE") != null)
+                signingConfigs.getByName("release")
+            else
+                signingConfigs.getByName("debug")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

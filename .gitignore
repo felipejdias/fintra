@@ -14,3 +14,14 @@
 .cxx
 local.properties
 /.idea/
+
+# Dados pessoais / exports bancários
+app/src/main/assets/*.csv
+*.csv
+
+# Assinatura de release (nunca commitar)
+release.keystore
+keystore.properties
+*.jks
+*.keystore
+keystore-base64.txt
